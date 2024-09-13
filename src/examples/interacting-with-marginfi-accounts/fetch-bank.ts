@@ -7,7 +7,7 @@ export const fetchBank = async (client: any, tokenSymbol: string) => {
         if (!bank) throw new Error(`Bank not found for symbol: ${tokenSymbol}`);
 
         console.log("Fetched bank:", bank);
-        return bank; // Return the bank object for further use
+        return bank;
     } catch (error) {
         console.error("Error fetching bank:", error);
         throw error;
