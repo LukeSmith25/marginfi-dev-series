@@ -20,7 +20,7 @@ build/
 .npm/
 
 # IntelliJ IDEA project files
-.idea/
+.idea/*
 *.iml
 
 # Mac system files
