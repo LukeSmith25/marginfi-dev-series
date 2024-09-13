@@ -1,18 +1,17 @@
 import { fetchBank } from "./fetch-bank";
 
 /**
- * Step 3: Borrow Funds from a Marginfi Bank
- * Returns the bank address from which funds were borrowed.
+ * Borrows funds from a bank.
  */
 export const borrowFunds = async (client: any, marginfiAccount: any) => {
-    // Fetch bank
-    const bank = await fetchBank(client); // Pass the client to fetchBank as well
-    if (!bank) throw new Error("Bank not found for symbol: SOL");
-
-    // Borrow funds from the bank
-    await marginfiAccount.borrow(1, bank.address);
-    console.log("Borrowed 1 SOL from the bank.");
-
-    // Return the bank address
-    return bank.address.toString();
+    try {
+        const bank = await fetchBank(client, "SOL"); // Fetch the bank for SOL
+        const borrowAmount = 0.05; // Using 0.05 SOL for borrowing
+        await marginfiAccount.borrow(borrowAmount, bank.address);
+        console.log(`Borrowed ${borrowAmount} SOL from the bank:`, bank.address.toString());
+        return bank.address; // Return bank address for further use
+    } catch (error) {
+        console.error("Error borrowing funds:", error);
+        throw error;
+    }
 };

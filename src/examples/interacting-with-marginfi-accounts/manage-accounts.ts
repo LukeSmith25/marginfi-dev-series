@@ -2,16 +2,19 @@
  * Step 2: Walk through key account methods and manage accounts.
  * Returns the account balance after management actions.
  */
-export const manageAccounts = async (client: any, account: any) => {
-    // Read account information
-    console.log("Reading account details...");
-    console.log("Account public key:", account.publicKey.toString());
+export const manageAccounts = async (client: any, marginfiAccount: any) => {
+    try {
+        // Read account information
+        console.log("Reading account details...");
+        console.log("Account public key:", marginfiAccount.publicKey.toString());
 
-    // Borrow funds (simplified)
-    const borrowAmount = 1; // Example amount to borrow
-    await client.borrow(account, borrowAmount);
-    console.log(`Borrowed ${borrowAmount} funds.`);
+        // Example: Fetching account balance
+        const balance = marginfiAccount.getBalance(); // Placeholder, update based on your use case
+        console.log(`Account balance: ${balance}`);
 
-    // Return the updated account balance
-    return account.getBalance();  // This is a placeholder; replace with actual balance fetching logic
+        return balance;  // Return the updated balance
+    } catch (error) {
+        console.error("Error managing accounts:", error);
+        throw error;
+    }
 };
