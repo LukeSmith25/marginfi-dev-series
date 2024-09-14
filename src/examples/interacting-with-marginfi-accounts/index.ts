@@ -57,22 +57,21 @@ const borrowFunds = async (client: MarginfiClient, marginfiAccount: any, bank: a
         if (!marginfiAccount) {
             throw new Error("MarginfiAccount is undefined");
         }
-        if (!bank.publicKey) {
-            throw new Error("Bank publicKey is undefined");
+        if (!bank?.address) {
+            throw new Error("Bank Address (PublicKey) is undefined");
         }
 
         // Log before borrowing
-        console.log(`Attempting to borrow ${borrowAmount} SOL from bank ${bank.publicKey.toString()}`);
+        console.log(`Attempting to borrow ${borrowAmount} SOL from bank ${bank.address.toBase58()}`);
 
-        // Ensure marginfiAccount has a proper borrow method and pass the bank's public key
-        await marginfiAccount.borrow(borrowAmount, bank.publicKey);
-        console.log(`Borrowed ${borrowAmount} SOL from bank ${bank.publicKey.toString()}`);
+        // Ensure marginfiAccount has a proper borrow method and pass the bank's public key (use bank.address instead of bank.publicKey)
+        await marginfiAccount.borrow(borrowAmount, bank.address);
+        console.log(`Borrowed ${borrowAmount} SOL from bank ${bank.address.toBase58()}`);
     } catch (error) {
         console.error("Error borrowing funds:", error);
         throw error;
     }
 };
-
 
 // Creates and fetches Marginfi accounts
 const createFetchAccounts = async (client: MarginfiClient) => {
