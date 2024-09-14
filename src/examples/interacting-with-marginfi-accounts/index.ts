@@ -1,11 +1,19 @@
-import { Connection, PublicKey } from "@solana/web3.js";
+import { Connection, Keypair } from "@solana/web3.js";
 import { NodeWallet } from "@mrgnlabs/mrgn-common";
 import { MarginfiClient, getConfig } from "@mrgnlabs/marginfi-client-v2";
+import * as fs from "fs";
+import * as os from "os"; // For resolving the home directory
 import { Environment } from "@mrgnlabs/marginfi-client-v2";
 
 // Define environment configuration
 const clusterUrl = "https://api.mainnet-beta.solana.com";
 const environment: Environment = "production";  // Set to production
+
+// Helper function to load keypair from a file
+const loadKeypairFromFile = (path: string): Keypair => {
+    const secretKey = JSON.parse(fs.readFileSync(path, 'utf8'));
+    return Keypair.fromSecretKey(new Uint8Array(secretKey));
+}
 
 /**
  * Initializes the Marginfi client with the configured environment.
@@ -13,7 +21,12 @@ const environment: Environment = "production";  // Set to production
  */
 const initializeClient = async (): Promise<MarginfiClient> => {
     const connection = new Connection(clusterUrl, "confirmed");
-    const wallet = NodeWallet.local();
+
+    // Load the keypair manually from the correct wallet file
+    const walletPath = `${os.homedir()}/solana-wallets/my-wallet/my-wallet.json`;
+    const walletKeypair = loadKeypairFromFile(walletPath);
+    const wallet = new NodeWallet(walletKeypair);
+
     const config = getConfig(environment);
     return await MarginfiClient.fetch(config, wallet, connection);
 };
@@ -34,10 +47,10 @@ const fetchBank = async (client: MarginfiClient, tokenSymbol: string) => {
 // Borrows funds from a bank
 const borrowFunds = async (client: MarginfiClient, marginfiAccount: any, bank: any) => {
     try {
-        const borrowAmount = 0.01;  // 0.01 SOL
+        const borrowAmount = 0.001;  // 0.001 SOL
 
         // Ensure marginfiAccount has a proper borrow method and pass the bank's public key.
-        await marginfiAccount.borrow(borrowAmount, bank.publicKey);  // Adjusted call
+        await marginfiAccount.borrow(borrowAmount, bank.publicKey);
         console.log(`Borrowed ${borrowAmount} SOL from bank ${bank.publicKey.toString()}`);
     } catch (error) {
         console.error("Error borrowing funds:", error);
@@ -65,8 +78,7 @@ const createFetchAccounts = async (client: MarginfiClient) => {
 // Manage accounts and perform actions like borrowing or deposits
 const manageAccounts = async (client: MarginfiClient, marginfiAccount: any, bank: any) => {
     try {
-        // Ensure marginfiAccount has the correct method to get balance.
-        const balance = await marginfiAccount.getBalance(bank.publicKey);  // Assuming getBalance uses bank's publicKey
+        const balance = await marginfiAccount.getBalance(bank.publicKey);
         console.log("Updated account balance:", balance);
         return balance;
     } catch (error) {
