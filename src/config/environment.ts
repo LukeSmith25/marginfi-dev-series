@@ -1,9 +1,13 @@
+import * as dotenv from "dotenv";  // To load .env file
 import { Environment } from "@mrgnlabs/marginfi-client-v2";  // Import Environment type
 
-// Only using mainnet (production) environment
+// Load environment variables from .env file
+dotenv.config();
+
+// Use .env variables for environment configuration
 const environment = {
-    clusterUrl: "https://api.mainnet-beta.solana.com",
-    environment: "production" as Environment  // Use "production" for mainnet
+    clusterUrl: process.env.ALCHEMY_RPC_ENDPOINT || "https://api.mainnet-beta.solana.com",
+    environment: process.env.MARGINFI_ENV as Environment || "production"
 };
 
 export default environment;
