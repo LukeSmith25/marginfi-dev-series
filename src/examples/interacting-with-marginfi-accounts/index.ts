@@ -1,6 +1,6 @@
-import { Connection, PublicKey } from "@solana/web3.js";
+import { Connection } from "@solana/web3.js";
 import { NodeWallet } from "@mrgnlabs/mrgn-common";
-import { MarginfiClient, getConfig, Bank, Environment, AccountType } from "@mrgnlabs/marginfi-client-v2";
+import { MarginfiClient, getConfig, Bank, Environment } from "@mrgnlabs/marginfi-client-v2";
 import { BigNumber } from "bignumber.js";
 
 // Define environment configuration
@@ -19,39 +19,20 @@ const initializeClient = async (): Promise<MarginfiClient> => {
 };
 
 /**
- * Fetches a list of all accounts (possibly banks) and finds the one with a specific token symbol.
+ * Fetches a bank using its token symbol (e.g., "SOL").
  * @param client - The MarginfiClient instance
  * @param tokenSymbol - The token symbol to fetch the bank for (e.g., "SOL")
- * @returns {Promise<Bank>} - Returns the found Bank instance
+ * @returns {Promise<Bank | null>} - Returns the found Bank instance or null
  */
 const fetchBank = async (client: MarginfiClient, tokenSymbol: string): Promise<Bank | null> => {
     try {
-        // Fetch all Marginfi account keys
-        const bankPubKeys = await client.getAllProgramAccountAddresses(AccountType.MarginfiGroup); // Use an existing AccountType
-
-        console.log("Bank Public Keys:", bankPubKeys);
-
-        // Fetch and process banks
-        const banks = await Promise.all(
-            bankPubKeys.map(async (bankPubKey) => {
-                const accountInfo = await client.provider.connection.getAccountInfo(bankPubKey);
-                if (!accountInfo) {
-                    console.error(`Failed to fetch account info for ${bankPubKey.toString()}`);
-                    return null;
-                }
-                // Parse bank data from buffer
-                return Bank.fromBuffer(bankPubKey, accountInfo.data);  // Adjust according to actual method in the Bank class
-            })
-        );
-
-        // Filter and return the bank matching the token symbol
-        const validBanks = banks.filter(bank => bank !== null);
-        const bankForToken = validBanks.find(bank => bank.tokenSymbol === tokenSymbol);
-
-        if (!bankForToken) throw new Error(`Bank not found for token symbol: ${tokenSymbol}`);
-        console.log("Fetched bank:", bankForToken);
-        return bankForToken;
-
+        // Use the client's method to get the bank by token symbol
+        const bank = client.getBankByTokenSymbol(tokenSymbol);
+        if (!bank) {
+            throw new Error(`Bank not found for token symbol: ${tokenSymbol}`);
+        }
+        console.log(`Fetched bank for ${tokenSymbol}:`, bank);
+        return bank;
     } catch (error) {
         console.error("Error fetching bank:", error);
         throw error;
@@ -59,15 +40,15 @@ const fetchBank = async (client: MarginfiClient, tokenSymbol: string): Promise<B
 };
 
 /**
- * Borrows funds from a specific bank
- * @param client - The MarginfiClient instance
+ * Borrows funds from a specific bank.
+ * @param account - The Marginfi account
  * @param bank - The Bank instance from which to borrow
  * @param amount - The amount to borrow
  */
-const borrowFunds = async (client: MarginfiClient, account: any, bank: Bank, amount: BigNumber) => {
+const borrowFunds = async (account: any, bank: Bank, amount: BigNumber) => {
     try {
-        // Ensure that `account.borrow` is used properly with `Bank` instance
-        await account.borrow(amount, bank);  // Pass the Bank object, not just PublicKey
+        // Borrow the amount from the bank
+        await account.borrow(amount, bank);
         console.log(`Borrowed ${amount.toString()} from the bank: ${bank.publicKey.toString()}`);
     } catch (error) {
         console.error("Error borrowing funds:", error);
@@ -76,7 +57,7 @@ const borrowFunds = async (client: MarginfiClient, account: any, bank: Bank, amo
 };
 
 /**
- * Creates and fetches Marginfi accounts
+ * Creates or fetches Marginfi accounts.
  * @param client - The MarginfiClient instance
  */
 const createFetchAccounts = async (client: MarginfiClient) => {
@@ -92,11 +73,7 @@ const createFetchAccounts = async (client: MarginfiClient) => {
         const marginfiAccount = await client.createMarginfiAccount();
         console.log("Created new Marginfi account:", marginfiAccount.publicKey.toString());
 
-        // Fetch all accounts for this authority
-        const fetchedAccounts = await client.getMarginfiAccountsForAuthority(client.wallet.publicKey);
-        console.log("Fetched accounts:", fetchedAccounts);
-
-        return { marginfiAccount, accounts: fetchedAccounts };
+        return { marginfiAccount, accounts: [marginfiAccount] };
     } catch (error) {
         console.error("Error creating and fetching accounts:", error);
         throw error;
@@ -104,21 +81,20 @@ const createFetchAccounts = async (client: MarginfiClient) => {
 };
 
 /**
- * Manages account operations like borrowing and retrieving balances
- * @param client - The MarginfiClient instance
+ * Manages account operations like borrowing and retrieving balances.
  * @param account - The Marginfi account to manage
  * @param bank - The bank from which to borrow funds
  * @param borrowAmount - The amount of SOL to borrow
  */
-const manageAccount = async (client: MarginfiClient, account: any, bank: Bank, borrowAmount: BigNumber) => {
+const manageAccount = async (account: any, bank: Bank, borrowAmount: BigNumber) => {
     try {
         console.log("Managing account:", account.publicKey.toString());
 
         // Borrow funds from the bank
-        await borrowFunds(client, account, bank, borrowAmount);
+        await borrowFunds(account, bank, borrowAmount);
 
-        // Fetch the updated balance for the account (placeholder)
-        const updatedBalance = await account.getBalance(bank.publicKey);  // Ensure `getBalance` accepts bank's PublicKey
+        // Fetch the updated balance for the account (if available)
+        const updatedBalance = await account.getBalance(bank.publicKey);
         console.log("Updated account balance:", updatedBalance);
 
         return updatedBalance;
@@ -129,23 +105,23 @@ const manageAccount = async (client: MarginfiClient, account: any, bank: Bank, b
 };
 
 /**
- * Main function to run all steps
+ * Main function to run all steps.
  */
 const main = async () => {
     try {
-        // Initialize the client
+        // Step 1: Initialize the client
         const client = await initializeClient();
 
-        // Step 1: Create and Fetch Accounts
-        const { marginfiAccount, accounts } = await createFetchAccounts(client);
-        console.log("Fetched accounts:", accounts);
+        // Step 2: Create and fetch accounts
+        const { marginfiAccount } = await createFetchAccounts(client);
 
-        // Step 2: Fetch the bank for SOL
+        // Step 3: Fetch the bank for SOL
         const solBank = await fetchBank(client, "SOL");
+        if (!solBank) throw new Error("SOL bank not found");
 
-        // Step 3: Manage the account and borrow 0.01 SOL
+        // Step 4: Manage the account and borrow 0.01 SOL
         const borrowAmount = new BigNumber(0.01);  // Borrow 0.01 SOL
-        const balance = await manageAccount(client, marginfiAccount, solBank, borrowAmount);
+        const balance = await manageAccount(marginfiAccount, solBank, borrowAmount);
 
         console.log("Final account balance after borrow:", balance);
     } catch (err) {
@@ -153,5 +129,5 @@ const main = async () => {
     }
 };
 
+// Execute the main function
 main().catch(err => console.error("Error in main function:", err));
-
