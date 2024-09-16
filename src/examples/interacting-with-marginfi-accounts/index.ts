@@ -1,4 +1,4 @@
-import { Connection, Keypair } from "@solana/web3.js";
+import {Connection, Keypair, SendTransactionError} from "@solana/web3.js";
 import { NodeWallet } from "@mrgnlabs/mrgn-common";
 import { MarginfiClient, getConfig } from "@mrgnlabs/marginfi-client-v2";
 import * as fs from "fs";
@@ -48,10 +48,25 @@ const fetchBank = async (client: MarginfiClient, tokenSymbol: string) => {
     }
 };
 
-// Borrows funds from a bank
-const borrowFunds = async (client: MarginfiClient, marginfiAccount: any, bank: any) => {
+const depositFunds = async (client: MarginfiClient, marginfiAccount: any, bank: any, depositAmount: number) => {
     try {
-        const borrowAmount = 0.001;  // 0.001 SOL
+        if (!marginfiAccount) throw new Error("MarginfiAccount is undefined");
+        if (!bank?.address) throw new Error("Bank Address (PublicKey) is undefined");
+
+        console.log(`Depositing ${depositAmount} SOL into bank ${bank.address.toBase58()}`);
+        await marginfiAccount.deposit(depositAmount, bank.address);
+        console.log(`Deposited ${depositAmount} SOL into bank ${bank.address.toBase58()}`);
+    } catch (error) {
+        console.error("Error depositing funds:", error);
+        throw error;
+    }
+};
+
+
+// Modified borrowFunds with enhanced error logging
+const borrowFunds = async (client: MarginfiClient, marginfiAccount: any, bank: any, connection: Connection) => {
+    try {
+        const borrowAmount = 0.0001;
 
         // Ensure marginfiAccount and bank are properly initialized
         if (!marginfiAccount) {
@@ -64,11 +79,25 @@ const borrowFunds = async (client: MarginfiClient, marginfiAccount: any, bank: a
         // Log before borrowing
         console.log(`Attempting to borrow ${borrowAmount} SOL from bank ${bank.address.toBase58()}`);
 
-        // Ensure marginfiAccount has a proper borrow method and pass the bank's public key (use bank.address instead of bank.publicKey)
+        // Check for collateral
+        await checkCollateral(client, marginfiAccount, bank);
+
+        // Check if the bank is in operational state
+        checkBankOperationalState(bank);
+
+        // Attempt to borrow funds
         await marginfiAccount.borrow(borrowAmount, bank.address);
         console.log(`Borrowed ${borrowAmount} SOL from bank ${bank.address.toBase58()}`);
     } catch (error) {
-        console.error("Error borrowing funds:", error);
+        // Enhanced logging for transaction error
+        if (error instanceof SendTransactionError) {
+            console.error("Transaction simulation failed. Logs:");
+            const logs = await error.getLogs(connection);
+            console.error(logs);  // Log the actual logs for debugging
+            console.error("Full error message:", error.message);
+        } else {
+            console.error("Error borrowing funds:", error);
+        }
         throw error;
     }
 };
@@ -102,17 +131,44 @@ const manageAccounts = async (client: MarginfiClient, marginfiAccount: any, bank
     }
 };
 
+const checkCollateral = async (client: MarginfiClient, marginfiAccount: any, bank: any) => {
+    try {
+        const balance = await marginfiAccount.getBalance(bank.address);
+        console.log(`Account balance for ${bank.tokenSymbol}:`, balance);
+        if (balance.assetShares.lte(0)) {
+            throw new Error("Insufficient collateral for borrowing");
+        }
+    } catch (error) {
+        console.error("Error checking collateral:", error);
+        throw error;
+    }
+};
+
+const checkBankOperationalState = (bank: any) => {
+    if (bank.config.operationalState !== 'Operational') {
+        throw new Error(`Bank ${bank.tokenSymbol} is not operational. Current state: ${bank.config.operationalState}`);
+    }
+};
+
+/**
+ * Main function to run all steps
+ */
 /**
  * Main function to run all steps
  */
 const main = async () => {
     try {
         const client = await initializeClient();
+        const connection = new Connection(clusterUrl, "confirmed");
 
         const { marginfiAccount } = await createFetchAccounts(client);
         const solBank = await fetchBank(client, "SOL");
+
+        // Deposit funds before borrowing
+        await depositFunds(client, marginfiAccount, solBank, 0.0001);
+
         await manageAccounts(client, marginfiAccount, solBank);
-        await borrowFunds(client, marginfiAccount, solBank);
+        await borrowFunds(client, marginfiAccount, solBank, connection);
 
         console.log("Funds borrowed successfully.");
     } catch (err) {
