@@ -3,7 +3,7 @@ import { NodeWallet } from "@mrgnlabs/mrgn-common";
 import { MarginfiClient, getConfig } from "@mrgnlabs/marginfi-client-v2";
 import * as fs from "fs";
 import * as os from "os";  // For resolving the home directory
-import environment from "../config/environment";
+import environment from "../../config/environment";
 
 /**
  * Helper function to load keypair from a file
