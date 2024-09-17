@@ -40,13 +40,17 @@ const fetchBank = async (client: MarginfiClient, tokenSymbol: string) => {
     try {
         const bank = client.getBankByTokenSymbol(tokenSymbol);
         if (!bank) throw new Error(`Bank not found for symbol: ${tokenSymbol}`);
+
         console.log("Fetched bank:", bank);
+        console.log("Bank Address (PublicKey):", bank.address?.toBase58());
+
         return bank;
     } catch (error) {
         console.error("Error fetching bank:", error);
         throw error;
     }
 };
+
 
 const depositFunds = async (client: MarginfiClient, marginfiAccount: any, bank: any, depositAmount: number) => {
     try {
@@ -122,7 +126,12 @@ const createFetchAccounts = async (client: MarginfiClient) => {
 // Manage accounts and perform actions like borrowing or deposits
 const manageAccounts = async (client: MarginfiClient, marginfiAccount: any, bank: any) => {
     try {
-        const balance = await marginfiAccount.getBalance(bank.publicKey);
+        // Ensure bank and publicKey exist
+        if (!bank || !bank.address) {
+            throw new Error("Bank or Bank Address (PublicKey) is undefined");
+        }
+
+        const balance = await marginfiAccount.getBalance(bank.address);
         console.log("Updated account balance:", balance);
         return balance;
     } catch (error) {
@@ -130,6 +139,7 @@ const manageAccounts = async (client: MarginfiClient, marginfiAccount: any, bank
         throw error;
     }
 };
+
 
 const checkCollateral = async (client: MarginfiClient, marginfiAccount: any, bank: any) => {
     try {
@@ -165,7 +175,12 @@ const main = async () => {
         const solBank = await fetchBank(client, "SOL");
 
         // Deposit funds before borrowing
+        // Deposit 0.005 SOL
         await depositFunds(client, marginfiAccount, solBank, 0.0001);
+
+        // Borrow 0.0001 SOL (already set in your borrowFunds function)
+        await borrowFunds(client, marginfiAccount, solBank, connection);
+
 
         await manageAccounts(client, marginfiAccount, solBank);
         await borrowFunds(client, marginfiAccount, solBank, connection);
