@@ -6,7 +6,7 @@ import { createFetchAccounts } from "../../common/utils/createFetchAccounts";
 import { manageAccounts } from "../../common/utils/manageAccounts";
 import {Connection} from "@solana/web3.js";
 
-import * as dotenv from "dotenv"; // To load .env file
+import * as dotenv from "dotenv";
 import { Environment } from "@mrgnlabs/marginfi-client-v2";
 import * as os from "node:os";
 
