@@ -8,19 +8,14 @@ import { borrowFunds } from "../../common/utils/borrowFunds";
 import { createFetchAccounts } from "../../common/utils/createFetchAccounts";
 import { getAccountBalance } from "../../common/utils/getAccountBalance";
 import environment from "../../config/environment";
-import * as os from "os";
-
-// Load the wallet path from the environment or use a default one
-const walletPath = `${process.env.MARGINFI_WALLET}`;
 
 const main = async () => {
     try {
-        // Initialize the Marginfi client directly here
         const connection = new Connection(environment.clusterUrl, "confirmed");
-        const walletKeypair = loadKeypairFromFile(walletPath);
+        const walletKeypair = loadKeypairFromFile(`${process.env.MARGINFI_WALLET}`);
         const wallet = new NodeWallet(walletKeypair);
 
-        const config = getConfig(environment.environment); // Use the environment configuration
+        const config = getConfig(environment.environment);
         const client = await MarginfiClient.fetch(config, wallet, connection);
 
         console.log("Step 1: Creating Marginfi Account...");
