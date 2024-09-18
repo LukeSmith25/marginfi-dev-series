@@ -1,27 +1,27 @@
-import { initializeClient } from "../../common/utils/initializeClient";
+import { Connection } from "@solana/web3.js";
+import { NodeWallet } from "@mrgnlabs/mrgn-common";
+import { MarginfiClient, getConfig } from "@mrgnlabs/marginfi-client-v2";
+import { loadKeypairFromFile } from "../../common/utils/utils";
 import { fetchBank } from "../../common/utils/fetchBank";
 import { depositFunds } from "../../common/utils/depositFunds";
 import { borrowFunds } from "../../common/utils/borrowFunds";
 import { createFetchAccounts } from "../../common/utils/createFetchAccounts";
-import { manageAccounts } from "../../common/utils/manageAccounts";
-import {Connection} from "@solana/web3.js";
+import { getAccountBalance } from "../../common/utils/getAccountBalance";
+import environment from "../../config/environment";
+import * as os from "os";
 
-import * as dotenv from "dotenv";
-import { Environment } from "@mrgnlabs/marginfi-client-v2";
-import * as os from "node:os";
-
-// Load environment variables from .env file
-dotenv.config();
-
-// Use environment variables for configuration
-const clusterUrl = process.env.MARGINFI_RPC_ENDPOINT || "https://api.mainnet-beta.solana.com";
-const walletPath = process.env.MARGINFI_WALLET || `${os.homedir()}/solana-wallets/my-wallet/my-wallet.json`;
-const environment: Environment = process.env.MARGINFI_ENV as Environment || "production"; // Set to production
+// Load the wallet path from the environment or use a default one
+const walletPath = `${process.env.MARGINFI_WALLET}`;
 
 const main = async () => {
     try {
-        const client = await initializeClient();
-        const connection = new Connection(clusterUrl, "confirmed");
+        // Initialize the Marginfi client directly here
+        const connection = new Connection(environment.clusterUrl, "confirmed");
+        const walletKeypair = loadKeypairFromFile(walletPath);
+        const wallet = new NodeWallet(walletKeypair);
+
+        const config = getConfig(environment.environment); // Use the environment configuration
+        const client = await MarginfiClient.fetch(config, wallet, connection);
 
         console.log("Step 1: Creating Marginfi Account...");
         const { marginfiAccount } = await createFetchAccounts(client);
@@ -36,7 +36,7 @@ const main = async () => {
         await borrowFunds(client, marginfiAccount, solBank, connection);
 
         console.log("Step 5: Managing Accounts...");
-        await manageAccounts(client, marginfiAccount, solBank);
+        await getAccountBalance(client, marginfiAccount, solBank);
 
         console.log("Funds borrowed and managed successfully.");
     } catch (err) {

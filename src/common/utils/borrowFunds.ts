@@ -1,7 +1,6 @@
 import { MarginfiClient } from "@mrgnlabs/marginfi-client-v2";
 import { Connection } from "@solana/web3.js";
-import { checkCollateral } from "./checkCollateral";
-import { checkBankOperationalState } from "./checkBankOperationalState";
+import { checkBankOperationalState, checkCollateral } from "./utils";
 
 export const borrowFunds = async (client: MarginfiClient, marginfiAccount: any, bank: any, connection: Connection) => {
     try {
