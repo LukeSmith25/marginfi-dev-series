@@ -115,7 +115,7 @@ const main = async () => {
         await checkAccountStatus(marginfiAccount, solBank);
 
         console.log("Step 6: Withdrawing Funds...");
-        await performWithdrawal(marginfiAccount, solBank, 0.00005); // Example withdrawal amount
+        await performWithdrawal(marginfiAccount, solBank, 0.00005);
 
         console.log("Funds borrowed, managed, and withdrawn successfully.");
     } catch (err) {
